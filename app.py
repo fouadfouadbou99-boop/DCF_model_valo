@@ -2,18 +2,22 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
+# --------------------------------------------------
+# CONFIGURATION
+# --------------------------------------------------
+
 st.set_page_config(
     page_title="DCF Equity Valuation",
     page_icon="📈",
     layout="wide"
 )
 
-st.title("📈 DCF Equity Valuation Model")
+st.title("📈 DCF Equity Valuation")
 st.markdown("Valorisation des Fonds Propres par la méthode DCF")
 
-# ==================================================
-# HYPOTHESES
-# ==================================================
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
 
 st.sidebar.header("Hypothèses")
 
@@ -26,12 +30,13 @@ growth_defaults = [8.0, 7.0, 6.0, 5.0, 4.0]
 
 growth_rates = []
 
-for i, g in enumerate(growth_defaults, start=1):
+for i, growth_default in enumerate(growth_defaults, start=1):
     growth = st.sidebar.number_input(
         f"Croissance A{i} (%)",
-        value=g,
+        value=float(growth_default),
         step=0.1
     )
+
     growth_rates.append(growth / 100)
 
 ebit_margin = st.sidebar.number_input(
@@ -94,18 +99,18 @@ debt_weight = 1 - equity_weight
 st.sidebar.subheader("Structure Financière")
 
 net_debt = st.sidebar.number_input(
-    "Dette Nette (MMAD)",
+    "Dette nette (MMAD)",
     value=800.0
 )
 
 shares_outstanding = st.sidebar.number_input(
-    "Nombre d'Actions",
+    "Nombre d'actions",
     value=1220000
 )
 
-# ==================================================
+# --------------------------------------------------
 # WACC
-# ==================================================
+# --------------------------------------------------
 
 cost_equity = risk_free + beta * market_premium
 
@@ -114,9 +119,9 @@ wacc = (
     + debt_weight * cost_debt * (1 - tax_rate)
 )
 
-# ==================================================
-# DCF
-# ==================================================
+# --------------------------------------------------
+# PROJECTIONS
+# --------------------------------------------------
 
 years = [1, 2, 3, 4, 5]
 
@@ -129,12 +134,11 @@ bfrs = []
 fcffs = []
 
 revenue = revenue0
-
 previous_bfr = revenue0 * bfr_pct
 
 for growth in growth_rates:
 
-    revenue *= (1 + growth)
+    revenue = revenue * (1 + growth)
 
     ebit = revenue * ebit_margin
 
@@ -160,6 +164,10 @@ for growth in growth_rates:
     bfrs.append(delta_bfr)
     fcffs.append(fcff)
 
+# --------------------------------------------------
+# ACTUALISATION
+# --------------------------------------------------
+
 discount_factors = []
 pv_fcff = []
 
@@ -173,14 +181,33 @@ for year, fcff in zip(years, fcffs):
 
 sum_pv_fcff = sum(pv_fcff)
 
-terminal_value = (
-    fcffs[-1] * (1 + terminal_growth)
-) / (wacc - terminal_growth)
+# --------------------------------------------------
+# VALEUR TERMINALE
+# --------------------------------------------------
 
-pv_terminal_value = (
-    terminal_value /
-    ((1 + wacc) ** 5)
-)
+if wacc <= terminal_growth:
+
+    st.error(
+        "Le WACC doit être supérieur à la croissance terminale."
+    )
+
+    terminal_value = 0
+    pv_terminal_value = 0
+
+else:
+
+    terminal_value = (
+        fcffs[-1] * (1 + terminal_growth)
+    ) / (wacc - terminal_growth)
+
+    pv_terminal_value = (
+        terminal_value /
+        ((1 + wacc) ** 5)
+    )
+
+# --------------------------------------------------
+# VALORISATION
+# --------------------------------------------------
 
 enterprise_value = (
     sum_pv_fcff +
@@ -193,17 +220,24 @@ equity_value = (
 )
 
 equity_value_mad = (
-    equity_value * 1000000
+    equity_value *
+    1000000
 )
 
-value_per_share = (
-    equity_value_mad /
-    shares_outstanding
-)
+if shares_outstanding > 0:
 
-# ==================================================
+    value_per_share = (
+        equity_value_mad /
+        shares_outstanding
+    )
+
+else:
+
+    value_per_share = 0
+
+# --------------------------------------------------
 # KPI
-# ==================================================
+# --------------------------------------------------
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -232,9 +266,9 @@ col5.metric(
     f"{value_per_share:,.2f} MAD"
 )
 
-# ==================================================
+# --------------------------------------------------
 # TABLEAU DCF
-# ==================================================
+# --------------------------------------------------
 
 df = pd.DataFrame({
     "Année": years,
@@ -250,21 +284,69 @@ df = pd.DataFrame({
 
 st.subheader("Flux Prévisionnels")
 
-st.dataframe(df.round(2), use_container_width=True)
+st.dataframe(
+    df.round(2),
+    use_container_width=True
+)
 
-# ==================================================
-# SYNTHÈSE
-# ==================================================
+# --------------------------------------------------
+# SYNTHESE
+# --------------------------------------------------
 
-st.subheader("Valorisation des Fonds Propres")
+st.subheader("Synthèse de Valorisation")
 
-resume = pd.DataFrame({
-    "Indicateur": [
-        "Valeur Entreprise",
-        "Dette Nette",
-        "Valeur Fonds Propres",
-        "Nombre Actions",
-        "Valeur par Action"
-    ],
-    "Valeur": [
-        
+resume = pd.DataFrame(
+    {
+        "Indicateur": [
+            "Valeur Entreprise",
+            "Dette Nette",
+            "Valeur Fonds Propres",
+            "Nombre Actions",
+            "Valeur par Action"
+        ],
+        "Valeur": [
+            enterprise_value,
+            net_debt,
+            equity_value,
+            shares_outstanding,
+            value_per_share
+        ]
+    }
+)
+
+st.dataframe(
+    resume,
+    use_container_width=True
+)
+
+# --------------------------------------------------
+# EXPORT EXCEL
+# --------------------------------------------------
+
+output = BytesIO()
+
+with pd.ExcelWriter(
+    output,
+    engine="openpyxl"
+) as writer:
+
+    df.to_excel(
+        writer,
+        sheet_name="DCF",
+        index=False
+    )
+
+    resume.to_excel(
+        writer,
+        sheet_name="Synthese",
+        index=False
+    )
+
+excel_data = output.getvalue()
+
+st.download_button(
+    label="📥 Télécharger Excel",
+    data=excel_data,
+    file_name="DCF_Equity_Valuation.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
