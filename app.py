@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-# --------------------------------------------------
+# ==================================================
 # CONFIGURATION
-# --------------------------------------------------
+# ==================================================
 
 st.set_page_config(
     page_title="DCF Equity Valuation",
@@ -15,9 +15,9 @@ st.set_page_config(
 st.title("📈 DCF Equity Valuation")
 st.markdown("Valorisation des Fonds Propres par la méthode DCF")
 
-# --------------------------------------------------
-# SIDEBAR
-# --------------------------------------------------
+# ==================================================
+# HYPOTHESES
+# ==================================================
 
 st.sidebar.header("Hypothèses")
 
@@ -30,13 +30,12 @@ growth_defaults = [8.0, 7.0, 6.0, 5.0, 4.0]
 
 growth_rates = []
 
-for i, growth_default in enumerate(growth_defaults, start=1):
+for i, g in enumerate(growth_defaults, start=1):
     growth = st.sidebar.number_input(
         f"Croissance A{i} (%)",
-        value=float(growth_default),
+        value=float(g),
         step=0.1
     )
-
     growth_rates.append(growth / 100)
 
 ebit_margin = st.sidebar.number_input(
@@ -96,21 +95,25 @@ equity_weight = st.sidebar.number_input(
 
 debt_weight = 1 - equity_weight
 
+# ==================================================
+# STRUCTURE FINANCIERE
+# ==================================================
+
 st.sidebar.subheader("Structure Financière")
 
 net_debt = st.sidebar.number_input(
-    "Dette nette (MMAD)",
+    "Dette Nette (MMAD)",
     value=800.0
 )
 
 shares_outstanding = st.sidebar.number_input(
-    "Nombre d'actions",
+    "Nombre d'Actions",
     value=1220000
 )
 
-# --------------------------------------------------
+# ==================================================
 # WACC
-# --------------------------------------------------
+# ==================================================
 
 cost_equity = risk_free + beta * market_premium
 
@@ -119,9 +122,9 @@ wacc = (
     + debt_weight * cost_debt * (1 - tax_rate)
 )
 
-# --------------------------------------------------
+# ==================================================
 # PROJECTIONS
-# --------------------------------------------------
+# ==================================================
 
 years = [1, 2, 3, 4, 5]
 
@@ -138,7 +141,7 @@ previous_bfr = revenue0 * bfr_pct
 
 for growth in growth_rates:
 
-    revenue = revenue * (1 + growth)
+    revenue *= (1 + growth)
 
     ebit = revenue * ebit_margin
 
@@ -164,9 +167,9 @@ for growth in growth_rates:
     bfrs.append(delta_bfr)
     fcffs.append(fcff)
 
-# --------------------------------------------------
+# ==================================================
 # ACTUALISATION
-# --------------------------------------------------
+# ==================================================
 
 discount_factors = []
 pv_fcff = []
@@ -181,9 +184,9 @@ for year, fcff in zip(years, fcffs):
 
 sum_pv_fcff = sum(pv_fcff)
 
-# --------------------------------------------------
+# ==================================================
 # VALEUR TERMINALE
-# --------------------------------------------------
+# ==================================================
 
 if wacc <= terminal_growth:
 
@@ -205,9 +208,9 @@ else:
         ((1 + wacc) ** 5)
     )
 
-# --------------------------------------------------
+# ==================================================
 # VALORISATION
-# --------------------------------------------------
+# ==================================================
 
 enterprise_value = (
     sum_pv_fcff +
@@ -219,25 +222,19 @@ equity_value = (
     net_debt
 )
 
-equity_value_mad = (
-    equity_value *
-    1000000
-)
+equity_value_mad = equity_value * 1_000_000
 
 if shares_outstanding > 0:
-
     value_per_share = (
         equity_value_mad /
         shares_outstanding
     )
-
 else:
-
     value_per_share = 0
 
-# --------------------------------------------------
+# ==================================================
 # KPI
-# --------------------------------------------------
+# ==================================================
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -266,9 +263,9 @@ col5.metric(
     f"{value_per_share:,.2f} MAD"
 )
 
-# --------------------------------------------------
+# ==================================================
 # TABLEAU DCF
-# --------------------------------------------------
+# ==================================================
 
 df = pd.DataFrame({
     "Année": years,
@@ -279,6 +276,7 @@ df = pd.DataFrame({
     "CAPEX": capexs,
     "Variation BFR": bfrs,
     "FCFF": fcffs,
+    "Facteur Actualisation": discount_factors,
     "VA FCFF": pv_fcff
 })
 
@@ -289,39 +287,47 @@ st.dataframe(
     use_container_width=True
 )
 
-# --------------------------------------------------
+# ==================================================
 # SYNTHESE
-# --------------------------------------------------
+# ==================================================
 
 st.subheader("Synthèse de Valorisation")
 
-resume = pd.DataFrame(
-    {
-        "Indicateur": [
-            "Valeur Entreprise",
-            "Dette Nette",
-            "Valeur Fonds Propres",
-            "Nombre Actions",
-            "Valeur par Action"
-        ],
-        "Valeur": [
-            enterprise_value,
-            net_debt,
-            equity_value,
-            shares_outstanding,
-            value_per_share
-        ]
-    }
-)
+resume = pd.DataFrame({
+    "Indicateur": [
+        "Somme VA FCFF",
+        "VA Valeur Terminale",
+        "--------------------",
+        "VALEUR D'ENTREPRISE",
+        "(-) Dette Nette",
+        "--------------------",
+        "VALEUR DES FONDS PROPRES",
+        "Nombre d'Actions",
+        "--------------------",
+        "VALEUR PAR ACTION"
+    ],
+    "Valeur": [
+        round(sum_pv_fcff, 2),
+        round(pv_terminal_value, 2),
+        "",
+        round(enterprise_value, 2),
+        round(net_debt, 2),
+        "",
+        round(equity_value, 2),
+        int(shares_outstanding),
+        "",
+        round(value_per_share, 2)
+    ]
+})
 
 st.dataframe(
     resume,
     use_container_width=True
 )
 
-# --------------------------------------------------
+# ==================================================
 # EXPORT EXCEL
-# --------------------------------------------------
+# ==================================================
 
 output = BytesIO()
 
@@ -338,7 +344,7 @@ with pd.ExcelWriter(
 
     resume.to_excel(
         writer,
-        sheet_name="Synthese",
+        sheet_name="Valorisation",
         index=False
     )
 
