@@ -6,7 +6,7 @@ import seaborn as sns
 from io import BytesIO
 
 # =====================================================
-# CONFIG
+# CONFIGURATION
 # =====================================================
 
 st.set_page_config(
@@ -24,60 +24,99 @@ st.sidebar.header("Hypothèses de valorisation")
 
 risk_free = st.sidebar.number_input(
     "Taux sans risque (%)",
-    value=3.53
+    value=3.53,
+    step=0.01
 ) / 100
 
 market_premium = st.sidebar.number_input(
     "Prime de marché (%)",
-    value=6.07
+    value=6.07,
+    step=0.01
 ) / 100
 
 specific_risk = st.sidebar.number_input(
     "Prime de risque spécifique (%)",
-    value=1.50
+    value=1.50,
+    step=0.01
 ) / 100
 
 tax_rate = st.sidebar.number_input(
     "Taux d'impôt (%)",
-    value=35.0
+    value=35.0,
+    step=1.0
 ) / 100
 
 beta_unlevered = st.sidebar.number_input(
     "Beta désendetté",
-    value=0.906
+    value=0.906,
+    step=0.001
 )
 
 debt = st.sidebar.number_input(
     "Dette nette (MMAD)",
-    value=11.0
+    value=11.0,
+    step=1.0
 )
 
 equity = st.sidebar.number_input(
-    "Valeur des fonds propres cible (MMAD)",
-    value=1783.0
+    "Valeur cible des fonds propres (MMAD)",
+    value=1783.0,
+    step=10.0
 )
 
 cost_debt = st.sidebar.number_input(
     "Coût de la dette (%)",
-    value=6.0
+    value=6.0,
+    step=0.1
 ) / 100
 
 g = st.sidebar.number_input(
     "Croissance à l'infini (%)",
-    value=2.0
+    value=2.0,
+    step=0.1
 ) / 100
+
+# =====================================================
+# NOUVEAU : RECONCILIATION
+# =====================================================
+
+use_manual_normative = st.sidebar.checkbox(
+    "Flux normatif manuel",
+    value=True
+)
+
+fcff_normative_manual = st.sidebar.number_input(
+    "FCFF normatif",
+    value=178.8,
+    step=0.1
+)
+
+use_manual_factor = st.sidebar.checkbox(
+    "Facteur terminal manuel",
+    value=True
+)
+
+terminal_discount_factor = st.sidebar.number_input(
+    "Facteur actualisation terminal",
+    value=0.654,
+    step=0.001,
+    format="%.3f"
+)
 
 shares = st.sidebar.number_input(
     "Nombre d'actions (millions)",
-    value=12.47
+    value=12.47,
+    step=0.01
 )
 
 # =====================================================
-# WACC
+# CALCUL WACC
 # =====================================================
 
 beta_levered = beta_unlevered * (
-    1 + (1 - tax_rate) * (debt / equity)
+    1 +
+    (1 - tax_rate)
+    * (debt / equity)
 )
 
 cost_equity = (
@@ -104,9 +143,20 @@ st.subheader("Paramètres financiers")
 
 c1, c2, c3 = st.columns(3)
 
-c1.metric("Beta endetté", f"{beta_levered:.3f}")
-c2.metric("Coût des fonds propres", f"{cost_equity*100:.2f}%")
-c3.metric("WACC", f"{wacc*100:.2f}%")
+c1.metric(
+    "Beta endetté",
+    f"{beta_levered:.3f}"
+)
+
+c2.metric(
+    "Coût des fonds propres",
+    f"{cost_equity*100:.2f}%"
+)
+
+c3.metric(
+    "WACC",
+    f"{wacc*100:.2f}%"
+)
 
 # =====================================================
 # IMPORT EXCEL
@@ -117,6 +167,21 @@ uploaded_file = st.file_uploader(
     type=["xlsx"]
 )
 
+st.info("""
+Format Excel attendu :
+
+Année | FCFF
+2026 | 37
+2027 | 67
+2028 | 123
+2029 | 157
+2030 | 175
+""")
+
+# =====================================================
+# TRAITEMENT
+# =====================================================
+
 if uploaded_file:
 
     try:
@@ -124,6 +189,7 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
 
         st.subheader("Flux importés")
+
         st.dataframe(df)
 
         years = df.iloc[:, 0]
@@ -132,14 +198,14 @@ if uploaded_file:
         if g >= wacc:
 
             st.error(
-                "g doit être inférieur au WACC"
+                "Le taux de croissance doit être inférieur au WACC."
             )
 
             st.stop()
 
-        # ============================================
-        # STUB PERIOD
-        # ============================================
+        # =================================================
+        # STUB PERIOD JET ENERGY
+        # =================================================
 
         periods = [
             0.25,
@@ -158,24 +224,52 @@ if uploaded_file:
 
         pv_fcff_sum = pv_fcff.sum()
 
-        # ============================================
+        # =================================================
         # FLUX NORMATIF
-        # ============================================
+        # =================================================
 
-        fcff_normatif = (
-            fcff.iloc[-1]
-            * (1 + g)
-        )
+        if use_manual_normative:
+
+            fcff_normatif = fcff_normative_manual
+
+        else:
+
+            fcff_normatif = (
+                fcff.iloc[-1]
+                * (1 + g)
+            )
+
+        # =================================================
+        # VALEUR TERMINALE
+        # =================================================
 
         terminal_value = (
             fcff_normatif
             / (wacc - g)
         )
 
-        pv_terminal = (
+        pv_terminal_theoretical = (
             terminal_value
             * discount_factors[-1]
         )
+
+        if use_manual_factor:
+
+            pv_terminal = (
+                terminal_value
+                * terminal_discount_factor
+            )
+
+        else:
+
+            pv_terminal = (
+                terminal_value
+                * discount_factors[-1]
+            )
+
+        # =================================================
+        # VALORISATION
+        # =================================================
 
         enterprise_value = (
             pv_fcff_sum
@@ -192,9 +286,9 @@ if uploaded_file:
             / shares
         )
 
-        # ============================================
+        # =================================================
         # RESULTATS
-        # ============================================
+        # =================================================
 
         st.header("Résultats DCF")
 
@@ -220,18 +314,49 @@ if uploaded_file:
             f"{value_per_share:,.2f}"
         )
 
-        # ============================================
+        # =================================================
+        # RECONCILIATION
+        # =================================================
+
+        st.subheader("Réconciliation DCF")
+
+        r1, r2, r3 = st.columns(3)
+
+        r1.metric(
+            "FCFF Normatif",
+            f"{fcff_normatif:,.1f}"
+        )
+
+        r2.metric(
+            "Facteur Théorique",
+            f"{discount_factors[-1]:.4f}"
+        )
+
+        facteur_utilise = (
+            terminal_discount_factor
+            if use_manual_factor
+            else discount_factors[-1]
+        )
+
+        r3.metric(
+            "Facteur Utilisé",
+            f"{facteur_utilise:.4f}"
+        )
+
+        # =================================================
         # TABLEAU DCF
-        # ============================================
+        # =================================================
 
         dcf_df = pd.DataFrame(
             {
                 "Année": years,
                 "FCFF": fcff,
-                "Facteur": discount_factors,
+                "Facteur Actualisation": discount_factors,
                 "FCFF Actualisé": pv_fcff
             }
         )
+
+        st.subheader("Tableau DCF")
 
         st.dataframe(
             dcf_df,
@@ -243,9 +368,9 @@ if uploaded_file:
             f"{pv_fcff_sum:,.0f}"
         )
 
-        # ============================================
-        # COMMENTAIRE AUTOMATIQUE
-        # ============================================
+        # =================================================
+        # COMMENTAIRE DE GESTION
+        # =================================================
 
         st.header("Commentaire de Gestion")
 
@@ -255,52 +380,24 @@ if uploaded_file:
         ) * 100
 
         commentaire = f"""
-        Enterprise Value : {enterprise_value:,.0f} MMAD
+Enterprise Value : {enterprise_value:,.0f} MMAD
 
-        Equity Value : {equity_value:,.0f} MMAD
+Valeur des fonds propres : {equity_value:,.0f} MMAD
 
-        Valeur par action : {value_per_share:,.2f}
+Valeur théorique par action : {value_per_share:,.2f}
 
-        WACC : {wacc*100:.2f} %
+WACC retenu : {wacc*100:.2f} %
 
-        Croissance terminale : {g*100:.2f} %
+Croissance terminale : {g*100:.2f} %
 
-        La valeur terminale représente
-        {terminal_weight:.1f}% de l'Enterprise Value.
-        """
-
-        if terminal_weight > 75:
-
-            commentaire += """
-
-            L'essentiel de la valorisation repose
-            sur les hypothèses de long terme.
-
-            Une attention particulière doit être portée
-            au WACC et au taux de croissance terminale.
-            """
-
-        elif terminal_weight > 60:
-
-            commentaire += """
-
-            La valorisation reste cohérente avec
-            le profil d'une société en croissance.
-            """
-
-        else:
-
-            commentaire += """
-
-            La valorisation repose principalement
-            sur les flux explicites.
-            """
+La valeur terminale représente {terminal_weight:.1f}% de la valeur d'entreprise.
+"""
 
         st.write(commentaire)
 
-        # ============================================
+        # =================================================
         # SENSIBILITE
-        # ============================================
+        # =================================================
 
         st.header("Sensibilité WACC / g")
 
@@ -317,14 +414,8 @@ if uploaded_file:
         )
 
         sensitivity = pd.DataFrame(
-            index=[
-                f"{x*100:.1f}%"
-                for x in wacc_range
-            ],
-            columns=[
-                f"{x*100:.1f}%"
-                for x in g_range
-            ]
+            index=[f"{x*100:.1f}%" for x in wacc_range],
+            columns=[f"{x*100:.1f}%" for x in g_range]
         )
 
         for w in wacc_range:
@@ -340,13 +431,10 @@ if uploaded_file:
 
                     pv_tv = (
                         tv
-                        * discount_factors[-1]
+                        * facteur_utilise
                     )
 
-                    ev = (
-                        pv_fcff_sum
-                        + pv_tv
-                    )
+                    ev = pv_fcff_sum + pv_tv
 
                     eq = ev - debt
 
@@ -359,9 +447,7 @@ if uploaded_file:
 
         sensitivity = sensitivity.astype(float)
 
-        fig, ax = plt.subplots(
-            figsize=(10, 6)
-        )
+        fig, ax = plt.subplots(figsize=(10, 6))
 
         sns.heatmap(
             sensitivity,
@@ -373,9 +459,9 @@ if uploaded_file:
 
         st.pyplot(fig)
 
-        # ============================================
+        # =================================================
         # EXPORT EXCEL
-        # ============================================
+        # =================================================
 
         buffer = BytesIO()
 
@@ -396,15 +482,17 @@ if uploaded_file:
             )
 
             pd.DataFrame({
-                "Indicateur":[
+                "Indicateur": [
                     "WACC",
+                    "FCFF Normatif",
                     "Valeur Terminale",
                     "Enterprise Value",
                     "Equity Value",
                     "Valeur par Action"
                 ],
-                "Valeur":[
+                "Valeur": [
                     wacc,
+                    fcff_normatif,
                     pv_terminal,
                     enterprise_value,
                     equity_value,
@@ -417,10 +505,10 @@ if uploaded_file:
             )
 
             pd.DataFrame({
-                "Commentaire":[commentaire]
+                "Commentaire": [commentaire]
             }).to_excel(
                 writer,
-                sheet_name="Investment Memo",
+                sheet_name="Investment_Memo",
                 index=False
             )
 
@@ -435,6 +523,4 @@ if uploaded_file:
 
     except Exception as e:
 
-        st.error(
-            f"Erreur : {str(e)}"
-        )
+        st.error(f"Erreur : {str(e)}")
