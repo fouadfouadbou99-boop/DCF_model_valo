@@ -1,358 +1,206 @@
-import streamlit as st
+# ==========================================
+# MODULE DE VALORISATION DCF COMPLET
+# ==========================================
+
+import numpy as np
 import pandas as pd
-from io import BytesIO
 
-# ==================================================
-# CONFIGURATION
-# ==================================================
+# ==========================================
+# 1. HYPOTHESES
+# ==========================================
 
-st.set_page_config(
-    page_title="DCF Equity Valuation",
-    page_icon="📈",
-    layout="wide"
+# Marché
+
+risk_free_rate = 0.0353      # 3.53 %
+market_risk_premium = 0.0607 # 6.07 %
+specific_risk_premium = 0.015 # 1.50 %
+
+# Fiscalité
+
+tax_rate = 0.35
+
+# Structure cible
+
+debt = 11.0          # Dette nette MMAD
+equity = 1783.0      # Valeur FP cible MMAD
+
+# Béta comparable
+
+beta_unlevered = 0.906
+
+# Dette
+
+cost_of_debt = 0.06
+
+# Nombre d'actions
+
+shares_outstanding = 13.125
+
+# Croissance terminale
+
+g = 0.02
+
+# ==========================================
+# 2. RELEVER LE BETA (HAMADA)
+# ==========================================
+
+de_ratio = debt / equity
+
+beta_levered = beta_unlevered * (
+    1 + (1 - tax_rate) * de_ratio
 )
 
-st.title("📈 DCF Equity Valuation")
-st.markdown("Valorisation des Fonds Propres par la méthode DCF")
+print("Beta endetté :", round(beta_levered, 3))
 
-# ==================================================
-# HYPOTHESES
-# ==================================================
+# ==========================================
+# 3. CAPM AJUSTE
+# ==========================================
 
-st.sidebar.header("Hypothèses")
-
-revenue0 = st.sidebar.number_input(
-    "CA Année 0 (MMAD)",
-    value=1000.0
+cost_of_equity = (
+    risk_free_rate
+    + beta_levered * market_risk_premium
+    + specific_risk_premium
 )
 
-growth_defaults = [8.0, 7.0, 6.0, 5.0, 4.0]
+print("Coût des fonds propres :", round(cost_of_equity * 100, 2), "%")
 
-growth_rates = []
+# ==========================================
+# 4. WACC
+# ==========================================
 
-for i, g in enumerate(growth_defaults, start=1):
-    growth = st.sidebar.number_input(
-        f"Croissance A{i} (%)",
-        value=float(g),
-        step=0.1
-    )
-    growth_rates.append(growth / 100)
+total_capital = debt + equity
 
-ebit_margin = st.sidebar.number_input(
-    "Marge EBIT (%)",
-    value=20.0
-) / 100
+weight_equity = equity / total_capital
+weight_debt = debt / total_capital
 
-tax_rate = st.sidebar.number_input(
-    "Taux Impôt (%)",
-    value=30.0
-) / 100
-
-depreciation_pct = st.sidebar.number_input(
-    "Amortissements (% CA)",
-    value=3.0
-) / 100
-
-capex_pct = st.sidebar.number_input(
-    "CAPEX (% CA)",
-    value=5.0
-) / 100
-
-bfr_pct = st.sidebar.number_input(
-    "BFR (% CA)",
-    value=2.0
-) / 100
-
-terminal_growth = st.sidebar.number_input(
-    "Croissance Terminale (%)",
-    value=3.0
-) / 100
-
-risk_free = st.sidebar.number_input(
-    "Taux Sans Risque (%)",
-    value=3.0
-) / 100
-
-beta = st.sidebar.number_input(
-    "Beta",
-    value=1.0
-)
-
-market_premium = st.sidebar.number_input(
-    "Prime de Risque (%)",
-    value=6.0
-) / 100
-
-cost_debt = st.sidebar.number_input(
-    "Coût Dette (%)",
-    value=5.0
-) / 100
-
-equity_weight = st.sidebar.number_input(
-    "Poids Fonds Propres (%)",
-    value=70.0
-) / 100
-
-debt_weight = 1 - equity_weight
-
-# ==================================================
-# STRUCTURE FINANCIERE
-# ==================================================
-
-st.sidebar.subheader("Structure Financière")
-
-net_debt = st.sidebar.number_input(
-    "Dette Nette (MMAD)",
-    value=800.0
-)
-
-shares_outstanding = st.sidebar.number_input(
-    "Nombre d'Actions",
-    value=1220000
-)
-
-# ==================================================
-# WACC
-# ==================================================
-
-cost_equity = risk_free + beta * market_premium
+after_tax_cost_debt = cost_of_debt * (1 - tax_rate)
 
 wacc = (
-    equity_weight * cost_equity
-    + debt_weight * cost_debt * (1 - tax_rate)
+    weight_equity * cost_of_equity
+    + weight_debt * after_tax_cost_debt
 )
 
-# ==================================================
-# PROJECTIONS
-# ==================================================
+print("WACC :", round(wacc * 100, 2), "%")
 
-years = [1, 2, 3, 4, 5]
+# ==========================================
+# 5. PROJECTION DES FCFF
+# ==========================================
 
-revenues = []
-ebits = []
-nopats = []
-depreciations = []
-capexs = []
-bfrs = []
-fcffs = []
+years = [2026, 2027, 2028, 2029, 2030]
 
-revenue = revenue0
-previous_bfr = revenue0 * bfr_pct
+fcff = np.array([
+    37,
+    67,
+    123,
+    157,
+    175
+])
 
-for growth in growth_rates:
+# ==========================================
+# 6. ACTUALISATION DES FCFF
+# ==========================================
 
-    revenue *= (1 + growth)
+discount_factors = np.array([
+    1 / (1 + wacc) ** 0.25,
+    1 / (1 + wacc) ** 1.25,
+    1 / (1 + wacc) ** 2.25,
+    1 / (1 + wacc) ** 3.25,
+    1 / (1 + wacc) ** 4.25
+])
 
-    ebit = revenue * ebit_margin
+pv_fcff = fcff * discount_factors
 
-    nopat = ebit * (1 - tax_rate)
+pv_fcff_sum = pv_fcff.sum()
 
-    depreciation = revenue * depreciation_pct
+print("Somme FCFF actualisés :", round(pv_fcff_sum, 1))
 
-    capex = revenue * capex_pct
+# ==========================================
+# 7. FLUX NORMATIF
+# ==========================================
 
-    current_bfr = revenue * bfr_pct
+fcff_2030 = fcff[-1]
 
-    delta_bfr = current_bfr - previous_bfr
+fcff_normatif = fcff_2030 * (1 + g)
 
-    previous_bfr = current_bfr
+print("FCFF normatif :", round(fcff_normatif, 1))
 
-    fcff = nopat + depreciation - capex - delta_bfr
+# ==========================================
+# 8. VALEUR TERMINALE
+# ==========================================
 
-    revenues.append(revenue)
-    ebits.append(ebit)
-    nopats.append(nopat)
-    depreciations.append(depreciation)
-    capexs.append(capex)
-    bfrs.append(delta_bfr)
-    fcffs.append(fcff)
+terminal_value = (
+    fcff_normatif
+    / (wacc - g)
+)
 
-# ==================================================
-# ACTUALISATION
-# ==================================================
+print("Valeur terminale brute :", round(terminal_value, 1))
 
-discount_factors = []
-pv_fcff = []
+# ==========================================
+# 9. VALEUR TERMINALE ACTUALISEE
+# ==========================================
 
-for year, fcff in zip(years, fcffs):
+pv_terminal_value = (
+    terminal_value
+    * discount_factors[-1]
+)
 
-    factor = 1 / ((1 + wacc) ** year)
+print(
+    "Valeur terminale actualisée :",
+    round(pv_terminal_value, 1)
+)
 
-    discount_factors.append(factor)
-
-    pv_fcff.append(fcff * factor)
-
-sum_pv_fcff = sum(pv_fcff)
-
-# ==================================================
-# VALEUR TERMINALE
-# ==================================================
-
-if wacc <= terminal_growth:
-
-    st.error(
-        "Le WACC doit être supérieur à la croissance terminale."
-    )
-
-    terminal_value = 0
-    pv_terminal_value = 0
-
-else:
-
-    terminal_value = (
-        fcffs[-1] * (1 + terminal_growth)
-    ) / (wacc - terminal_growth)
-
-    pv_terminal_value = (
-        terminal_value /
-        ((1 + wacc) ** 5)
-    )
-
-# ==================================================
-# VALORISATION
-# ==================================================
+# ==========================================
+# 10. ENTREPRISE VALUE
+# ==========================================
 
 enterprise_value = (
-    sum_pv_fcff +
-    pv_terminal_value
+    pv_fcff_sum
+    + pv_terminal_value
 )
+
+print(
+    "Valeur d'entreprise :",
+    round(enterprise_value, 1)
+)
+
+# ==========================================
+# 11. EQUITY VALUE
+# ==========================================
 
 equity_value = (
-    enterprise_value -
-    net_debt
+    enterprise_value
+    - debt
 )
 
-equity_value_mad = equity_value * 1_000_000
-
-if shares_outstanding > 0:
-    value_per_share = (
-        equity_value_mad /
-        shares_outstanding
-    )
-else:
-    value_per_share = 0
-
-# ==================================================
-# KPI
-# ==================================================
-
-col1, col2, col3, col4, col5 = st.columns(5)
-
-col1.metric(
-    "Coût Fonds Propres",
-    f"{cost_equity:.2%}"
+print(
+    "Valeur des fonds propres :",
+    round(equity_value, 1)
 )
 
-col2.metric(
-    "WACC",
-    f"{wacc:.2%}"
+# ==========================================
+# 12. VALEUR PAR ACTION
+# ==========================================
+
+value_per_share = (
+    equity_value
+    / shares_outstanding
 )
 
-col3.metric(
-    "Valeur Entreprise",
-    f"{enterprise_value:,.2f} MMAD"
+print(
+    "Valeur par action :",
+    round(value_per_share, 2)
 )
 
-col4.metric(
-    "Valeur Fonds Propres",
-    f"{equity_value:,.2f} MMAD"
-)
+# ==========================================
+# 13. TABLEAU DE SYNTHESE
+# ==========================================
 
-col5.metric(
-    "Valeur / Action",
-    f"{value_per_share:,.2f} MAD"
-)
-
-# ==================================================
-# TABLEAU DCF
-# ==================================================
-
-df = pd.DataFrame({
+results = pd.DataFrame({
     "Année": years,
-    "CA": revenues,
-    "EBIT": ebits,
-    "NOPAT": nopats,
-    "Amortissements": depreciations,
-    "CAPEX": capexs,
-    "Variation BFR": bfrs,
-    "FCFF": fcffs,
-    "Facteur Actualisation": discount_factors,
-    "VA FCFF": pv_fcff
+    "FCFF": fcff,
+    "Facteur Actu.": discount_factors,
+    "FCFF Actualisé": pv_fcff
 })
 
-st.subheader("Flux Prévisionnels")
-
-st.dataframe(
-    df.round(2),
-    use_container_width=True
-)
-
-# ==================================================
-# SYNTHESE
-# ==================================================
-
-st.subheader("Synthèse de Valorisation")
-
-resume = pd.DataFrame({
-    "Indicateur": [
-        "Somme VA FCFF",
-        "VA Valeur Terminale",
-        "--------------------",
-        "VALEUR D'ENTREPRISE",
-        "(-) Dette Nette",
-        "--------------------",
-        "VALEUR DES FONDS PROPRES",
-        "Nombre d'Actions",
-        "--------------------",
-        "VALEUR PAR ACTION"
-    ],
-    "Valeur": [
-        round(sum_pv_fcff, 2),
-        round(pv_terminal_value, 2),
-        "",
-        round(enterprise_value, 2),
-        round(net_debt, 2),
-        "",
-        round(equity_value, 2),
-        int(shares_outstanding),
-        "",
-        round(value_per_share, 2)
-    ]
-})
-
-st.dataframe(
-    resume,
-    use_container_width=True
-)
-
-# ==================================================
-# EXPORT EXCEL
-# ==================================================
-
-output = BytesIO()
-
-with pd.ExcelWriter(
-    output,
-    engine="openpyxl"
-) as writer:
-
-    df.to_excel(
-        writer,
-        sheet_name="DCF",
-        index=False
-    )
-
-    resume.to_excel(
-        writer,
-        sheet_name="Valorisation",
-        index=False
-    )
-
-excel_data = output.getvalue()
-
-st.download_button(
-    label="📥 Télécharger Excel",
-    data=excel_data,
-    file_name="DCF_Equity_Valuation.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+print("\n")
+print(results)
