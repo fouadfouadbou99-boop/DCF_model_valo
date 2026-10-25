@@ -259,7 +259,7 @@ else:
 # TRAITEMENT
 # =====================================================
 
-if uploaded_file:
+if fcff is not None::
 
     try:
 
