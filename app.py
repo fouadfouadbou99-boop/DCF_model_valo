@@ -259,7 +259,7 @@ else:
 # TRAITEMENT
 # =====================================================
 
-if fcff is not None::
+if fcff is not None:
 
     try:
 
