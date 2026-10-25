@@ -184,7 +184,7 @@ if bp_file is not None:
         ],
         width="stretch"
     )
-        fcff = bp["FCFF"]
+        fcff = bp[FCFF]
 
     periods = np.arange(
         1,
