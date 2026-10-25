@@ -162,21 +162,98 @@ c3.metric(
 # IMPORT EXCEL
 # =====================================================
 
-uploaded_file = st.file_uploader(
-    "Importer fichier FCFF",
-    type=["xlsx"]
+mode = st.radio(
+    "Mode de valorisation",
+    [
+        "Business Plan",
+        "Import FCFF"
+    ]
 )
 
-st.info("""
-Format Excel attendu :
+fcff = None
+years = None
+bp = None
 
-Année | FCFF
-2026 | 37
-2027 | 67
-2028 | 123
-2029 | 157
-2030 | 175
-""")
+if mode == "Business Plan":
+
+    bp_file = st.file_uploader(
+        "Importer Business Plan",
+        type=["xlsx"],
+        key="bp"
+    )
+
+    if bp_file is not None:
+
+        bp = pd.read_excel(bp_file)
+
+        st.subheader("Business Plan")
+
+        st.dataframe(bp)
+
+        bp["FCFF"] = (
+            bp["EBITDA"]
+            - bp["IS"]
+            - bp["CAPEX"]
+            - bp["BFR"]
+        )
+
+        years = bp["Année"]
+
+        fcff = bp["FCFF"]
+
+        st.subheader("FCFF Calculés")
+
+        st.dataframe(
+            bp[
+                [
+                    "Année",
+                    "FCFF"
+                ]
+            ]
+        )
+
+        bp["Marge EBITDA"] = (
+            bp["EBITDA"]
+            / bp["CA"]
+        )
+
+        c1,c2,c3,c4 = st.columns(4)
+
+        c1.metric(
+            "CA Final",
+            f"{bp['CA'].iloc[-1]:,.0f}"
+        )
+
+        c2.metric(
+            "EBITDA Final",
+            f"{bp['EBITDA'].iloc[-1]:,.0f}"
+        )
+
+        c3.metric(
+            "FCFF Final",
+            f"{bp['FCFF'].iloc[-1]:,.0f}"
+        )
+
+        c4.metric(
+            "Marge EBITDA",
+            f"{bp['Marge EBITDA'].iloc[-1]*100:.1f}%"
+        )
+
+else:
+
+    uploaded_file = st.file_uploader(
+        "Importer fichier FCFF",
+        type=["xlsx"],
+        key="fcff"
+    )
+
+    if uploaded_file:
+
+        df = pd.read_excel(uploaded_file)
+
+        years = df.iloc[:,0]
+
+        fcff = df.iloc[:,1].astype(float)
 
 # =====================================================
 # TRAITEMENT
