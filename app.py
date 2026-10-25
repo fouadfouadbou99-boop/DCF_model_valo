@@ -314,15 +314,6 @@ else:
         for i in range(len(fcff))
     ]
 
-        discount_factors = np.array([
-            1 / ((1 + wacc) ** p)
-            for p in periods[:len(fcff)]
-        ])
-
-        pv_fcff = fcff.values * discount_factors
-
-        pv_fcff_sum = pv_fcff.sum()
-
         # =================================================
         # FLUX NORMATIF
         # =================================================
