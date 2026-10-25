@@ -284,7 +284,7 @@ if fcff is not None:
         # STUB PERIOD JET ENERGY
         # =================================================
 
-      discounting_method = st.sidebar.selectbox(
+discounting_method = st.sidebar.selectbox(
     "Méthode d'actualisation",
     [
         "Classique",
