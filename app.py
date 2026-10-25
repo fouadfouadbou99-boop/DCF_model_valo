@@ -284,13 +284,35 @@ if fcff is not None:
         # STUB PERIOD JET ENERGY
         # =================================================
 
-        periods = [
-            0.25,
-            1.25,
-            2.25,
-            3.25,
-            4.25
-        ]
+      discounting_method = st.sidebar.selectbox(
+    "Méthode d'actualisation",
+    [
+        "Classique",
+        "Stub Period"
+    ]
+)
+
+if discounting_method == "Classique":
+
+    periods = list(
+        range(
+            1,
+            len(fcff)+1
+        )
+    )
+
+else:
+
+    first_period = st.sidebar.number_input(
+        "Première période (année)",
+        value=0.25,
+        step=0.25
+    )
+
+    periods = [
+        first_period + i
+        for i in range(len(fcff))
+    ]
 
         discount_factors = np.array([
             1 / ((1 + wacc) ** p)
