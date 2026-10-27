@@ -341,9 +341,20 @@ with tab5:
         ]
     })
 
-    scenarios["Enterprise Value"] = (
-        enterprise_value
+    scenarios["Valeur Action"] = (
+        share_price
         * scenarios["Facteur"]
+    )
+
+    st.dataframe(
+        scenarios,
+        width="stretch"
+    )
+
+    st.bar_chart(
+        scenarios.set_index(
+            "Scénario"
+        )["Valeur Action"]
     )
 
     scenarios["Equity Value"] = (
