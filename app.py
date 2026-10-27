@@ -360,7 +360,10 @@ with tab5:
     )
 
     st.bar_chart(
-        scenarios.set_index("Scénario")["Valeur Action"]
+        scenarios.set_index(
+            "Scénario"
+        )["Valeur Action"]
+    )
     )
 committee_note = f"""
 EXECUTIVE SUMMARY
