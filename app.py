@@ -324,7 +324,7 @@ with tab1:
     )
    with tab5:
 
-    st.subheader("Stress Tests")
+        st.subheader("Stress Tests")
 
     scenarios = pd.DataFrame({
         "Scénario": [
