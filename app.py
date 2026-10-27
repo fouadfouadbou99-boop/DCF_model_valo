@@ -323,7 +323,8 @@ with tab1:
         width="stretch"
     )
    with tab5:
-        st.subheader("Stress Tests")
+
+    st.subheader("Stress Tests")
 
     scenarios = pd.DataFrame({
         "Scénario": [
@@ -349,6 +350,20 @@ with tab1:
         equity_value
         * scenarios["Facteur"]
     )
+
+    scenarios["Valeur Action"] = (
+        share_price
+        * scenarios["Facteur"]
+    )
+
+    st.dataframe(scenarios)
+
+    st.bar_chart(
+        scenarios.set_index("Scénario")[
+            "Valeur Action"
+        ]
+    )
+
 
     scenarios["Valeur Action"] = (
         share_price
