@@ -416,24 +416,35 @@ with tab5:
     st.bar_chart(
         scenarios.set_index("Scénario")["Valeur Action"]
     )
+committee_note = f"""
+EXECUTIVE SUMMARY
+
+La valorisation DCF conduit à une Enterprise Value de
+{enterprise_value:,.0f} MMAD.
+
+La valeur des capitaux propres ressort à
+{equity_value:,.0f} MMAD.
+
+La valeur théorique par action est estimée à
+{share_price:,.2f} DH.
+
 Le modèle repose sur un WACC de
-{wacc*100:.2f}% et une croissance
-terminale de
+{wacc*100:.2f}%
+
+et une croissance terminale de
 {terminal_growth*100:.2f}%.
 
 La valeur terminale représente
-{terminal_weight:.1f}% de la valeur
-totale.
+{terminal_weight:.1f}%
 
-Les stress tests démontrent une
-résilience satisfaisante de
-la valorisation.
+de la valeur totale.
 
-Sous réserve de réalisation du
-Business Plan, les hypothèses
-retenues paraissent raisonnables
-pour une présentation au
-Comité d'Investissement.
+Les stress tests démontrent une bonne résilience
+de la valorisation.
+
+Sous réserve de réalisation du Business Plan,
+les hypothèses apparaissent raisonnables pour une
+présentation au Comité d'Investissement.
 """
 def create_pdf():
 
