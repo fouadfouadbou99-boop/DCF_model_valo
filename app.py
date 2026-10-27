@@ -293,7 +293,7 @@ with tab1:
     st.dataframe(sensitivity)
     with tab5:
 
-    scenarios = pd.DataFrame({
+        scenarios = pd.DataFrame({
 
         "Scénario":[
             "Optimiste",
