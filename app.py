@@ -385,7 +385,7 @@ with tab5:
         width="stretch"
     )
 
-   fig = px.bar(
+   fig = px.bar(...)
     scenarios,
     x="Scénario",
     y="Valeur Action",
