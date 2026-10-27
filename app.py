@@ -241,7 +241,7 @@ with tab1:
     )
     with tab4:
 
-    results = []
+        results = []
 
     for w in np.arange(
         wacc-0.02,
