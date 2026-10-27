@@ -366,7 +366,7 @@ with tab5:
             "Scénario"
         )["Valeur Action"]
     )
-        ]
+        
     )
 
 
