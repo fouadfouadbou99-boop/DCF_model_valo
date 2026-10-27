@@ -385,12 +385,17 @@ with tab5:
         width="stretch"
     )
 
-   fig = px.bar(...)
+   fig = px.bar(
     scenarios,
     x="Scénario",
     y="Valeur Action",
     color="Scénario",
     title="Stress Test - Valeur par action"
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
 )
 
 st.plotly_chart(
