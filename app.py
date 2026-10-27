@@ -366,15 +366,17 @@ with tab1:
     )
 
     fig = px.bar(
-        scenarios,
-        x="Scénario",
-        y="Valeur Action",
-        color="Scénario"
-    )
+    scenarios,
+    x="Scénario",
+    y="Valeur Action",
+    color="Scénario",
+    title="Stress Test - Valeur par action"
+)
 
-    st.plotly_chart(
-        fig,
-        width="stretch"
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
     )
 committee_note = f"""
 EXECUTIVE SUMMARY
