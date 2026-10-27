@@ -322,7 +322,7 @@ with tab1:
         sensitivity,
         width="stretch"
     )
-   with tab5:
+with tab5:
 
     st.subheader("Stress Tests")
 
