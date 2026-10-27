@@ -377,7 +377,35 @@ with tab5:
 
     scenarios["Valeur Action"] = (
         share_price
-        * scenarios["Facteur"]
+       with tab5:
+
+    st.subheader("Stress Tests")
+
+    scenarios = pd.DataFrame({
+        "Scénario": [
+            "Optimiste",
+            "Base",
+            "Dégradé",
+            "Crise"
+        ],
+        "Facteur": [
+            1.15,
+            1.00,
+            0.85,
+            0.70
+        ]
+    })
+
+    scenarios["Enterprise Value"] = (
+        enterprise_value * scenarios["Facteur"]
+    )
+
+    scenarios["Equity Value"] = (
+        equity_value * scenarios["Facteur"]
+    )
+
+    scenarios["Valeur Action"] = (
+        share_price * scenarios["Facteur"]
     )
 
     st.dataframe(
@@ -385,39 +413,9 @@ with tab5:
         width="stretch"
     )
 
-   fig = px.bar(
-    scenarios,
-    x="Scénario",
-    y="Valeur Action",
-    color="Scénario",
-    title="Stress Test - Valeur par action"
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-committee_note = f"""
-EXECUTIVE SUMMARY
-
-La valorisation DCF conduit à une
-Enterprise Value de
-{enterprise_value:,.0f} MMAD.
-
-La valeur des capitaux propres
-ressort à
-{equity_value:,.0f} MMAD.
-
-La valeur théorique par action
-est estimée à
-{share_price:,.2f} DH.
-
+    st.bar_chart(
+        scenarios.set_index("Scénario")["Valeur Action"]
+    )
 Le modèle repose sur un WACC de
 {wacc*100:.2f}% et une croissance
 terminale de
