@@ -417,7 +417,6 @@ def create_pdf():
 
     return buffer
     excel_buffer = BytesIO()
-
 with tab6:
 
     st.subheader("Exports")
@@ -429,29 +428,32 @@ with tab6:
         engine="openpyxl"
     ) as writer:
 
-        bp_df.to_excel(
-            writer,
-            sheet_name="BusinessPlan",
-            index=False
-        )
+        if 'bp_df' in locals():
+            bp_df.to_excel(
+                writer,
+                sheet_name="BusinessPlan",
+                index=False
+            )
 
-        sensitivity.to_excel(
-            writer,
-            sheet_name="Sensibilites",
-            index=False
-        )
+        if 'sensitivity' in locals():
+            sensitivity.to_excel(
+                writer,
+                sheet_name="Sensibilites",
+                index=False
+            )
 
-        scenarios.to_excel(
-            writer,
-            sheet_name="StressTests",
-            index=False
-        )
+        if 'scenarios' in locals():
+            scenarios.to_excel(
+                writer,
+                sheet_name="StressTests",
+                index=False
+            )
 
     excel_buffer.seek(0)
 
     st.download_button(
-        "📥 Télécharger Excel",
-        data=excel_buffer,
+        label="📥 Télécharger Excel",
+        data=excel_buffer.getvalue(),
         file_name="DCF_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
