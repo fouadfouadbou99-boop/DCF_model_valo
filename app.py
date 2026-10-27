@@ -323,7 +323,6 @@ with tab1:
         width="stretch"
     )
    with tab5:
-
         st.subheader("Stress Tests")
 
     scenarios = pd.DataFrame({
