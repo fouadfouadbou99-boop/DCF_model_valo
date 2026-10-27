@@ -365,7 +365,7 @@ with tab5:
         )["Valeur Action"]
     )
     
-   terminal_weight = (
+terminal_weight = (
     pv_tv / enterprise_value * 100
 )
 
