@@ -364,8 +364,8 @@ with tab5:
             "Scénario"
         )["Valeur Action"]
     )
-    )
-committee_note = f"""
+    
+    committee_note = f"""
 EXECUTIVE SUMMARY
 
 La valorisation DCF conduit à une Enterprise Value de
