@@ -376,7 +376,7 @@ with tab5:
     )
 
     scenarios["Valeur Action"] = ()
-        share_price
+    share_price
        with tab5:
 
     st.subheader("Stress Tests")
