@@ -365,16 +365,20 @@ with tab5:
         )["Valeur Action"]
     )
     
-    committee_note = f"""
+   terminal_weight = (
+    pv_tv / enterprise_value * 100
+)
+
+committee_note = f"""
 EXECUTIVE SUMMARY
 
-La valorisation DCF conduit à une Enterprise Value de
+La valeur d'entreprise ressort à
 {enterprise_value:,.0f} MMAD.
 
 La valeur des capitaux propres ressort à
 {equity_value:,.0f} MMAD.
 
-La valeur théorique par action est estimée à
+La valeur théorique par action est de
 {share_price:,.2f} DH.
 
 Le modèle repose sur un WACC de
@@ -387,52 +391,10 @@ La valeur terminale représente
 {terminal_weight:.1f}%
 
 de la valeur totale.
-
-Les stress tests démontrent une bonne résilience
-de la valorisation.
-
-Sous réserve de réalisation du Business Plan,
-les hypothèses apparaissent raisonnables pour une
-présentation au Comité d'Investissement.
 """
-def create_pdf():
 
-    buffer = BytesIO()
+st.write(committee_note)
 
-    doc = SimpleDocTemplate(
-        buffer
-    )
-
-    styles = (
-        getSampleStyleSheet()
-    )
-
-    story = []
-
-    story.append(
-        Paragraph(
-            "Rapport de Valorisation",
-            styles["Title"]
-        )
-    )
-
-    story.append(
-        Spacer(1,20)
-    )
-
-    story.append(
-        Paragraph(
-            committee_note,
-            styles["BodyText"]
-        )
-    )
-
-    doc.build(story)
-
-    buffer.seek(0)
-
-    return buffer
-    excel_buffer = BytesIO()
 with tab6:
 
     st.subheader("Exports")
