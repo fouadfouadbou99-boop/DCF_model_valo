@@ -405,7 +405,7 @@ with tab5:
         width="stretch"
     )
 
-    fig = price =.bar(
+    fig = price.bar(
     scenarios,
     x="Scénario",
     y="Valeur Action",
