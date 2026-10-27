@@ -418,61 +418,40 @@ def create_pdf():
     return buffer
     excel_buffer = BytesIO()
 
-with pd.ExcelWriter(
-    excel_buffer,
-    engine="openpyxl"
-) as writer:
+with tab6:
 
-    bp_df.to_excel(
-        writer,
-        sheet_name="BusinessPlan",
-        index=False
+    st.subheader("Exports")
+
+    excel_buffer = BytesIO()
+
+    with pd.ExcelWriter(
+        excel_buffer,
+        engine="openpyxl"
+    ) as writer:
+
+        bp_df.to_excel(
+            writer,
+            sheet_name="BusinessPlan",
+            index=False
+        )
+
+        sensitivity.to_excel(
+            writer,
+            sheet_name="Sensibilites",
+            index=False
+        )
+
+        scenarios.to_excel(
+            writer,
+            sheet_name="StressTests",
+            index=False
+        )
+
+    excel_buffer.seek(0)
+
+    st.download_button(
+        "📥 Télécharger Excel",
+        data=excel_buffer,
+        file_name="DCF_Report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-    sensitivity.to_excel(
-        writer,
-        sheet_name="Sensibilites",
-        index=False
-    )
-
-    scenarios.to_excel(
-        writer,
-        sheet_name="StressTests",
-        index=False
-    )
-from io import BytesIO
-
-excel_buffer = BytesIO()
-
-with pd.ExcelWriter(
-    excel_buffer,
-    engine="openpyxl"
-) as writer:
-
-    bp_df.to_excel(
-        writer,
-        sheet_name="BusinessPlan",
-        index=False
-    )
-
-    sensitivity.to_excel(
-        writer,
-        sheet_name="Sensibilites",
-        index=False
-    )
-
-    scenarios.to_excel(
-        writer,
-        sheet_name="StressTests",
-        index=False
-    )
-
-excel_buffer.seek(0)
-
-excel_buffer.seek(0)
-
-st.download_button(
-    "📥 Télécharger Excel",
-    excel_buffer,
-    "DCF_Report.xlsx"
-)
