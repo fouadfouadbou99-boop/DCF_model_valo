@@ -243,7 +243,7 @@ with tab1:
 
        st.subheader("Valorisation DCF")
 
-      st.metric(
+       st.metric(
         "Enterprise Value",
         f"{enterprise_value:,.0f}"
     )
