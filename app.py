@@ -406,6 +406,7 @@ with tab5:
     )
 
     fig = price.bar(...)
+    
     scenarios,
     x="Scénario",
     y="Valeur Action",
