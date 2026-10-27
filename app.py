@@ -241,9 +241,9 @@ with tab1:
     )
     with tab3:
 
-    st.subheader("Valorisation DCF")
+       st.subheader("Valorisation DCF")
 
-    st.metric(
+      st.metric(
         "Enterprise Value",
         f"{enterprise_value:,.0f}"
     )
@@ -271,7 +271,7 @@ with tab1:
     )
     with tab4:
 
-    st.subheader("Sensibilité WACC / g")
+        st.subheader("Sensibilité WACC / g")
 
     results = []
 
