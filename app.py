@@ -239,61 +239,96 @@ with tab1:
         "WACC",
         f"{wacc*100:.2f}%"
     )
+    with tab3:
+
+    st.subheader("Valorisation DCF")
+
+    st.metric(
+        "Enterprise Value",
+        f"{enterprise_value:,.0f}"
+    )
+
+    st.metric(
+        "Equity Value",
+        f"{equity_value:,.0f}"
+    )
+
+    st.metric(
+        "Valeur Action",
+        f"{share_price:,.2f}"
+    )
+
+    dcf_table = pd.DataFrame({
+        "Année": bp_df["Année"],
+        "FCFF": fcffs,
+        "Facteur": discounts,
+        "PV FCFF": pv_fcff
+    })
+
+    st.dataframe(
+        dcf_table,
+        width="stretch"
+    )
     with tab4:
 
-        results = []
+    st.subheader("Sensibilité WACC / g")
+
+    results = []
 
     for w in np.arange(
-        wacc-0.02,
-        wacc+0.021,
+        wacc - 0.02,
+        wacc + 0.021,
         0.005
     ):
 
-        for g in np.arange(
+        for g_test in np.arange(
             0.01,
             0.05,
             0.005
         ):
 
-            if w > g:
+            if w > g_test:
 
-                sim_tv = (
+                tv = (
                     fcff_norm
-                    /(w-g)
+                    /
+                    (w - g_test)
                 )
 
-                sim_ev = (
+                ev = (
                     pv_fcff_sum
-                    + sim_tv*discounts[-1]
+                    +
+                    tv * discounts[-1]
                 )
 
-                sim_eq = (
-                    sim_ev
-                    - net_debt
-                )
+                eq = ev - net_debt
 
-                sim_px = (
-                    sim_eq
-                    / shares
-                )
+                px = eq / shares
 
                 results.append(
-                    [w,g,sim_px]
+                    [w, g_test, px]
                 )
 
     sensitivity = pd.DataFrame(
         results,
         columns=[
             "WACC",
-            "g",
-            "Prix"
+            "Croissance",
+            "Prix Action"
         ]
     )
 
-    st.dataframe(sensitivity)
+    st.dataframe(
+        sensitivity,
+        width="stretch"
+    )
     with tab5:
 
-        scenarios = pd.DataFrame({
+    st.subheader(
+        "Stress Tests"
+    )
+
+    scenarios = pd.DataFrame({
 
         "Scénario":[
             "Optimiste",
@@ -310,41 +345,37 @@ with tab1:
         ]
     })
 
-    scenarios["EV"] = (
+    scenarios["Enterprise Value"] = (
         enterprise_value
         * scenarios["Facteur"]
     )
 
-    scenarios["Equity"] = (
+    scenarios["Equity Value"] = (
         equity_value
         * scenarios["Facteur"]
     )
 
-    scenarios["Prix"] = (
+    scenarios["Valeur Action"] = (
         share_price
         * scenarios["Facteur"]
     )
 
     st.dataframe(
-        scenarios
+        scenarios,
+        width="stretch"
     )
 
     fig = px.bar(
         scenarios,
         x="Scénario",
-        y="Prix"
+        y="Valeur Action",
+        color="Scénario"
     )
 
     st.plotly_chart(
         fig,
-        use_container_width=True
+        width="stretch"
     )
-    terminal_weight = (
-    pv_tv
-    / enterprise_value
-    *100
-)
-
 committee_note = f"""
 EXECUTIVE SUMMARY
 
