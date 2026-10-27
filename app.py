@@ -322,59 +322,7 @@ with tab1:
         sensitivity,
         width="stretch"
     )
-with tab5:
 
-    st.subheader("Stress Tests")
-
-    scenarios = pd.DataFrame({
-        "Scénario": [
-            "Optimiste",
-            "Base",
-            "Dégradé",
-            "Crise"
-        ],
-        "Facteur": [
-            1.15,
-            1.00,
-            0.85,
-            0.70
-        ]
-    })
-
-    scenarios["Enterprise Value"] = (
-        enterprise_value
-        * scenarios["Facteur"]
-    )
-
-    scenarios["Equity Value"] = (
-        equity_value
-        * scenarios["Facteur"]
-    )
-
-    scenarios["Valeur Action"] = (
-        share_price
-        * scenarios["Facteur"]
-    )
-
-    st.dataframe(
-        scenarios,
-        width="stretch"
-    )
-
-    st.bar_chart(
-        scenarios.set_index(
-            "Scénario"
-        )["Valeur Action"]
-    )
-        
-  
-scenarios["Equity Value"] = (
-        equity_value
-        * scenarios["Facteur"]
-    )
-
-scenarios["Valeur Action"] = ()
-share_price
 with tab5:
 
     st.subheader("Stress Tests")
