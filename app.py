@@ -367,10 +367,8 @@ with tab5:
         )["Valeur Action"]
     )
         
-    )
-
-
-    scenarios["Equity Value"] = (
+  
+scenarios["Equity Value"] = (
         equity_value
         * scenarios["Facteur"]
     )
