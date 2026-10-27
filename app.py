@@ -373,7 +373,7 @@ scenarios["Equity Value"] = (
         * scenarios["Facteur"]
     )
 
-    scenarios["Valeur Action"] = ()
+scenarios["Valeur Action"] = ()
     share_price
 with tab5:
 
