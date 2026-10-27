@@ -342,15 +342,18 @@ with tab5:
     })
 
     scenarios["Enterprise Value"] = (
-        enterprise_value * scenarios["Facteur"]
+        enterprise_value
+        * scenarios["Facteur"]
     )
 
     scenarios["Equity Value"] = (
-        equity_value * scenarios["Facteur"]
+        equity_value
+        * scenarios["Facteur"]
     )
 
     scenarios["Valeur Action"] = (
-        share_price * scenarios["Facteur"]
+        share_price
+        * scenarios["Facteur"]
     )
 
     st.dataframe(
@@ -359,13 +362,10 @@ with tab5:
     )
 
     st.bar_chart(
-        scenarios.set_index("Scénario")["Valeur Action"]
+        scenarios.set_index(
+            "Scénario"
+        )["Valeur Action"]
     )
-    st.dataframe(scenarios)
-
-    st.bar_chart(
-        scenarios.set_index("Scénario")[
-            "Valeur Action"
         ]
     )
 
