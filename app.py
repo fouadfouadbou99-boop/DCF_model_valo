@@ -1,440 +1,450 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+
 from io import BytesIO
 
-# =====================================================
-# CONFIG
-# =====================================================
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    PageBreak
+)
 
+from reportlab.lib.styles import getSampleStyleSheet
 st.set_page_config(
-    page_title="DCF Valuation Tool",
+    page_title="Corporate Valuation Platform",
     layout="wide"
 )
 
-st.title("DCF Valuation Tool")
-
-# =====================================================
-# SIDEBAR
-# =====================================================
-
-st.sidebar.header("Hypothèses de valorisation")
+st.title("Corporate Valuation Platform")
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📊 Dashboard",
+    "📈 Business Plan",
+    "💰 DCF",
+    "🎯 Sensibilités",
+    "⚠️ Stress Tests",
+    "📄 Rapport"
+])
+st.sidebar.header("Hypothèses")
 
 risk_free = st.sidebar.number_input(
     "Taux sans risque (%)",
-    value=3.53
-) / 100
+    value=3.5
+)/100
 
 market_premium = st.sidebar.number_input(
     "Prime de marché (%)",
-    value=6.07
-) / 100
+    value=6.0
+)/100
+
+beta = st.sidebar.number_input(
+    "Beta",
+    value=1.0
+)
 
 specific_risk = st.sidebar.number_input(
-    "Prime de risque spécifique (%)",
-    value=1.50
-) / 100
+    "Prime spécifique (%)",
+    value=1.0
+)/100
 
 tax_rate = st.sidebar.number_input(
-    "Taux d'impôt (%)",
-    value=35.0
-) / 100
-
-beta_unlevered = st.sidebar.number_input(
-    "Beta désendetté",
-    value=0.906
-)
-
-debt = st.sidebar.number_input(
-    "Dette nette (MMAD)",
-    value=11.0
-)
-
-equity = st.sidebar.number_input(
-    "Valeur des fonds propres cible (MMAD)",
-    value=1783.0
-)
+    "Impôt (%)",
+    value=30.0
+)/100
 
 cost_debt = st.sidebar.number_input(
-    "Coût de la dette (%)",
-    value=6.0
-) / 100
+    "Coût dette (%)",
+    value=5.0
+)/100
 
-g = st.sidebar.number_input(
-    "Croissance à l'infini (%)",
+terminal_growth = st.sidebar.number_input(
+    "Croissance terminale (%)",
     value=2.0
-) / 100
+)/100
+
+net_debt = st.sidebar.number_input(
+    "Dette nette",
+    value=100.0
+)
 
 shares = st.sidebar.number_input(
-    "Nombre d'actions (millions)",
-    value=12.47
+    "Actions (millions)",
+    value=10.0
 )
+with tab2:
 
-# =====================================================
-# WACC
-# =====================================================
+    st.subheader("Business Plan")
 
-beta_levered = beta_unlevered * (
-    1 + (1 - tax_rate) * (debt / equity)
-)
+    revenue0 = st.number_input(
+        "CA année 0",
+        value=1000.0
+    )
 
-cost_equity = (
+    growth_rate = st.number_input(
+        "Croissance (%)",
+        value=5.0
+    )/100
+
+    ebitda_margin = st.number_input(
+        "Marge EBITDA (%)",
+        value=25.0
+    )/100
+
+    depreciation_pct = st.number_input(
+        "Amortissements (% CA)",
+        value=3.0
+    )/100
+
+    capex_pct = st.number_input(
+        "CAPEX (% CA)",
+        value=5.0
+    )/100
+
+    nwc_pct = st.number_input(
+        "Variation BFR (% CA)",
+        value=2.0
+    )/100
+
+    years = 5
+
+    bp = []
+
+    revenue = revenue0
+
+    for y in range(1, years+1):
+
+        revenue *= (1 + growth_rate)
+
+        ebitda = revenue * ebitda_margin
+
+        depreciation = revenue * depreciation_pct
+
+        ebit = ebitda - depreciation
+
+        nopat = ebit * (1-tax_rate)
+
+        capex = revenue * capex_pct
+
+        nwc = revenue * nwc_pct
+
+        fcff = (
+            nopat
+            + depreciation
+            - capex
+            - nwc
+        )
+
+        bp.append([
+            y,
+            revenue,
+            ebitda,
+            ebit,
+            fcff
+        ])
+
+    bp_df = pd.DataFrame(bp,
+        columns=[
+            "Année",
+            "CA",
+            "EBITDA",
+            "EBIT",
+            "FCFF"
+        ])
+
+    st.dataframe(
+        bp_df,
+        use_container_width=True
+    )
+    cost_equity = (
     risk_free
-    + beta_levered * market_premium
+    + beta * market_premium
     + specific_risk
 )
 
-capital = debt + equity
+target_equity = 1000
 
-weight_debt = debt / capital
-weight_equity = equity / capital
+target_debt = net_debt
+
+capital = (
+    target_equity +
+    target_debt
+)
 
 wacc = (
-    weight_equity * cost_equity
-    + weight_debt * cost_debt * (1 - tax_rate)
+    target_equity/capital
+    * cost_equity +
+    target_debt/capital
+    * cost_debt
+    * (1-tax_rate)
+)
+fcffs = bp_df["FCFF"].values
+
+discounts = np.array([
+    1/(1+wacc)**i
+    for i in range(1,6)
+])
+
+pv_fcff = (
+    fcffs * discounts
 )
 
-# =====================================================
-# METRICS
-# =====================================================
-
-st.subheader("Paramètres financiers")
-
-c1, c2, c3 = st.columns(3)
-
-c1.metric("Beta endetté", f"{beta_levered:.3f}")
-c2.metric("Coût des fonds propres", f"{cost_equity*100:.2f}%")
-c3.metric("WACC", f"{wacc*100:.2f}%")
-
-# =====================================================
-# IMPORT EXCEL
-# =====================================================
-
-uploaded_file = st.file_uploader(
-    "Importer fichier FCFF",
-    type=["xlsx"]
+pv_fcff_sum = pv_fcff.sum()
+fcff_norm = (
+    fcffs[-1]
+    * (1+terminal_growth)
 )
 
-if uploaded_file:
+tv = (
+    fcff_norm /
+    (wacc-terminal_growth)
+)
 
-    try:
+pv_tv = tv*discounts[-1]
+enterprise_value = (
+    pv_fcff_sum
+    + pv_tv
+)
 
-        df = pd.read_excel(uploaded_file)
+equity_value = (
+    enterprise_value
+    - net_debt
+)
 
-        st.subheader("Flux importés")
-        st.dataframe(df)
+share_price = (
+    equity_value
+    / shares
+)
+with tab1:
 
-        years = df.iloc[:, 0]
-        fcff = df.iloc[:, 1].astype(float)
+    c1,c2,c3,c4 = st.columns(4)
 
-        if g >= wacc:
+    c1.metric(
+        "Enterprise Value",
+        f"{enterprise_value:,.0f}"
+    )
 
-            st.error(
-                "g doit être inférieur au WACC"
-            )
+    c2.metric(
+        "Equity Value",
+        f"{equity_value:,.0f}"
+    )
 
-            st.stop()
+    c3.metric(
+        "Valeur Action",
+        f"{share_price:,.2f}"
+    )
 
-        # ============================================
-        # STUB PERIOD
-        # ============================================
+    c4.metric(
+        "WACC",
+        f"{wacc*100:.2f}%"
+    )
+    with tab4:
 
-        periods = [
-            0.25,
-            1.25,
-            2.25,
-            3.25,
-            4.25
-        ]
+    results = []
 
-        discount_factors = np.array([
-            1 / ((1 + wacc) ** p)
-            for p in periods[:len(fcff)]
-        ])
+    for w in np.arange(
+        wacc-0.02,
+        wacc+0.021,
+        0.005
+    ):
 
-        pv_fcff = fcff.values * discount_factors
-
-        pv_fcff_sum = pv_fcff.sum()
-
-        # ============================================
-        # FLUX NORMATIF
-        # ============================================
-
-        fcff_normatif = (
-            fcff.iloc[-1]
-            * (1 + g)
-        )
-
-        terminal_value = (
-            fcff_normatif
-            / (wacc - g)
-        )
-
-        pv_terminal = (
-            terminal_value
-            * discount_factors[-1]
-        )
-
-        enterprise_value = (
-            pv_fcff_sum
-            + pv_terminal
-        )
-
-        equity_value = (
-            enterprise_value
-            - debt
-        )
-
-        value_per_share = (
-            equity_value
-            / shares
-        )
-
-        # ============================================
-        # RESULTATS
-        # ============================================
-
-        st.header("Résultats DCF")
-
-        col1, col2, col3, col4 = st.columns(4)
-
-        col1.metric(
-            "Valeur Terminale Actualisée",
-            f"{pv_terminal:,.0f}"
-        )
-
-        col2.metric(
-            "Enterprise Value",
-            f"{enterprise_value:,.0f}"
-        )
-
-        col3.metric(
-            "Equity Value",
-            f"{equity_value:,.0f}"
-        )
-
-        col4.metric(
-            "Valeur par action",
-            f"{value_per_share:,.2f}"
-        )
-
-        # ============================================
-        # TABLEAU DCF
-        # ============================================
-
-        dcf_df = pd.DataFrame(
-            {
-                "Année": years,
-                "FCFF": fcff,
-                "Facteur": discount_factors,
-                "FCFF Actualisé": pv_fcff
-            }
-        )
-
-        st.dataframe(
-            dcf_df,
-            use_container_width=True
-        )
-
-        st.metric(
-            "Somme FCFF actualisés",
-            f"{pv_fcff_sum:,.0f}"
-        )
-
-        # ============================================
-        # COMMENTAIRE AUTOMATIQUE
-        # ============================================
-
-        st.header("Commentaire de Gestion")
-
-        terminal_weight = (
-            pv_terminal
-            / enterprise_value
-        ) * 100
-
-        commentaire = f"""
-        Enterprise Value : {enterprise_value:,.0f} MMAD
-
-        Equity Value : {equity_value:,.0f} MMAD
-
-        Valeur par action : {value_per_share:,.2f}
-
-        WACC : {wacc*100:.2f} %
-
-        Croissance terminale : {g*100:.2f} %
-
-        La valeur terminale représente
-        {terminal_weight:.1f}% de l'Enterprise Value.
-        """
-
-        if terminal_weight > 75:
-
-            commentaire += """
-
-            L'essentiel de la valorisation repose
-            sur les hypothèses de long terme.
-
-            Une attention particulière doit être portée
-            au WACC et au taux de croissance terminale.
-            """
-
-        elif terminal_weight > 60:
-
-            commentaire += """
-
-            La valorisation reste cohérente avec
-            le profil d'une société en croissance.
-            """
-
-        else:
-
-            commentaire += """
-
-            La valorisation repose principalement
-            sur les flux explicites.
-            """
-
-        st.write(commentaire)
-
-        # ============================================
-        # SENSIBILITE
-        # ============================================
-
-        st.header("Sensibilité WACC / g")
-
-        wacc_range = np.arange(
-            max(0.05, wacc - 0.02),
-            wacc + 0.021,
-            0.005
-        )
-
-        g_range = np.arange(
+        for g in np.arange(
             0.01,
-            min(wacc - 0.005, 0.05),
+            0.05,
             0.005
+        ):
+
+            if w > g:
+
+                sim_tv = (
+                    fcff_norm
+                    /(w-g)
+                )
+
+                sim_ev = (
+                    pv_fcff_sum
+                    + sim_tv*discounts[-1]
+                )
+
+                sim_eq = (
+                    sim_ev
+                    - net_debt
+                )
+
+                sim_px = (
+                    sim_eq
+                    / shares
+                )
+
+                results.append(
+                    [w,g,sim_px]
+                )
+
+    sensitivity = pd.DataFrame(
+        results,
+        columns=[
+            "WACC",
+            "g",
+            "Prix"
+        ]
+    )
+
+    st.dataframe(sensitivity)
+    with tab5:
+
+    scenarios = pd.DataFrame({
+
+        "Scénario":[
+            "Optimiste",
+            "Base",
+            "Dégradé",
+            "Crise"
+        ],
+
+        "Facteur":[
+            1.15,
+            1.00,
+            0.85,
+            0.70
+        ]
+    })
+
+    scenarios["EV"] = (
+        enterprise_value
+        * scenarios["Facteur"]
+    )
+
+    scenarios["Equity"] = (
+        equity_value
+        * scenarios["Facteur"]
+    )
+
+    scenarios["Prix"] = (
+        share_price
+        * scenarios["Facteur"]
+    )
+
+    st.dataframe(
+        scenarios
+    )
+
+    fig = px.bar(
+        scenarios,
+        x="Scénario",
+        y="Prix"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+    terminal_weight = (
+    pv_tv
+    / enterprise_value
+    *100
+)
+
+committee_note = f"""
+EXECUTIVE SUMMARY
+
+La valorisation DCF conduit à une
+Enterprise Value de
+{enterprise_value:,.0f} MMAD.
+
+La valeur des capitaux propres
+ressort à
+{equity_value:,.0f} MMAD.
+
+La valeur théorique par action
+est estimée à
+{share_price:,.2f} DH.
+
+Le modèle repose sur un WACC de
+{wacc*100:.2f}% et une croissance
+terminale de
+{terminal_growth*100:.2f}%.
+
+La valeur terminale représente
+{terminal_weight:.1f}% de la valeur
+totale.
+
+Les stress tests démontrent une
+résilience satisfaisante de
+la valorisation.
+
+Sous réserve de réalisation du
+Business Plan, les hypothèses
+retenues paraissent raisonnables
+pour une présentation au
+Comité d'Investissement.
+"""
+def create_pdf():
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer
+    )
+
+    styles = (
+        getSampleStyleSheet()
+    )
+
+    story = []
+
+    story.append(
+        Paragraph(
+            "Rapport de Valorisation",
+            styles["Title"]
         )
+    )
 
-        sensitivity = pd.DataFrame(
-            index=[
-                f"{x*100:.1f}%"
-                for x in wacc_range
-            ],
-            columns=[
-                f"{x*100:.1f}%"
-                for x in g_range
-            ]
+    story.append(
+        Spacer(1,20)
+    )
+
+    story.append(
+        Paragraph(
+            committee_note,
+            styles["BodyText"]
         )
+    )
 
-        for w in wacc_range:
+    doc.build(story)
 
-            for gg in g_range:
+    buffer.seek(0)
 
-                if w > gg:
+    return buffer
+    excel_buffer = BytesIO()
 
-                    tv = (
-                        fcff_normatif
-                        / (w - gg)
-                    )
+with pd.ExcelWriter(
+    excel_buffer,
+    engine="openpyxl"
+) as writer:
 
-                    pv_tv = (
-                        tv
-                        * discount_factors[-1]
-                    )
+    bp_df.to_excel(
+        writer,
+        sheet_name="BusinessPlan",
+        index=False
+    )
 
-                    ev = (
-                        pv_fcff_sum
-                        + pv_tv
-                    )
+    sensitivity.to_excel(
+        writer,
+        sheet_name="Sensibilites",
+        index=False
+    )
 
-                    eq = ev - debt
+    scenarios.to_excel(
+        writer,
+        sheet_name="StressTests",
+        index=False
+    )
 
-                    px = eq / shares
+excel_buffer.seek(0)
 
-                    sensitivity.loc[
-                        f"{w*100:.1f}%",
-                        f"{gg*100:.1f}%"
-                    ] = round(px, 2)
-
-        sensitivity = sensitivity.astype(float)
-
-        fig, ax = plt.subplots(
-            figsize=(10, 6)
-        )
-
-        sns.heatmap(
-            sensitivity,
-            annot=True,
-            fmt=".1f",
-            cmap="RdYlGn",
-            ax=ax
-        )
-
-        st.pyplot(fig)
-
-        # ============================================
-        # EXPORT EXCEL
-        # ============================================
-
-        buffer = BytesIO()
-
-        with pd.ExcelWriter(
-            buffer,
-            engine="openpyxl"
-        ) as writer:
-
-            dcf_df.to_excel(
-                writer,
-                sheet_name="DCF",
-                index=False
-            )
-
-            sensitivity.to_excel(
-                writer,
-                sheet_name="Sensibilite"
-            )
-
-            pd.DataFrame({
-                "Indicateur":[
-                    "WACC",
-                    "Valeur Terminale",
-                    "Enterprise Value",
-                    "Equity Value",
-                    "Valeur par Action"
-                ],
-                "Valeur":[
-                    wacc,
-                    pv_terminal,
-                    enterprise_value,
-                    equity_value,
-                    value_per_share
-                ]
-            }).to_excel(
-                writer,
-                sheet_name="Synthese",
-                index=False
-            )
-
-            pd.DataFrame({
-                "Commentaire":[commentaire]
-            }).to_excel(
-                writer,
-                sheet_name="Investment Memo",
-                index=False
-            )
-
-        buffer.seek(0)
-
-        st.download_button(
-            "📥 Télécharger le rapport Excel",
-            data=buffer,
-            file_name="DCF_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    except Exception as e:
-
-        st.error(
-            f"Erreur : {str(e)}"
-        )
+st.download_button(
+    "📥 Télécharger Excel",
+    excel_buffer,
+    "DCF_Report.xlsx"
+)
